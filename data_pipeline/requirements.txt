@@ -1,0 +1,4 @@
+# For running the Bronze -> Silver -> Gold pipeline locally (no Databricks).
+pyspark==3.5.3
+delta-spark==3.2.1
+pytest==8.3.4

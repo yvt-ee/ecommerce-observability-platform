@@ -1,0 +1,95 @@
+services:
+  # ---------------------------------------------------------------------
+  # Application
+  # ---------------------------------------------------------------------
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////app/data/ecommerce.db
+      CORS_ALLOW_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: ecommerce-backend
+      ENVIRONMENT: docker
+    volumes:
+      - backend-data:/app/data
+    depends_on:
+      - otel-collector
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      # The browser calls this URL directly (outside the Docker network),
+      # so it must be the host-exposed backend port, not the service name.
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+  # ---------------------------------------------------------------------
+  # Observability
+  # ---------------------------------------------------------------------
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.112.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC (FastAPI -> here)
+      - "4318:4318" # OTLP HTTP
+      - "8889:8889" # Prometheus scrape endpoint (debugging)
+    depends_on:
+      - tempo
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200" # Tempo query API (Grafana reads from here)
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - tempo
+
+volumes:
+  backend-data:
+  prometheus-data:
+  grafana-data:
+  tempo-data:

@@ -1,0 +1,18 @@
+# Prometheus scrape config.
+#
+# Prometheus scrapes the OTEL Collector's Prometheus exporter endpoint --
+# it never scrapes FastAPI directly. That keeps the architecture as:
+#   FastAPI -> OpenTelemetry -> OTEL Collector -> Prometheus -> Grafana
+
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "otel-collector"
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -1,0 +1,52 @@
+# OpenTelemetry Collector config.
+#
+# Pipeline: FastAPI (OTLP/gRPC) -> this collector -> Prometheus (metrics)
+#                                                  -> Tempo (traces)
+#
+# This is the observability pipeline only. It never touches business data
+# (orders/products) -- that flows through the separate FastAPI -> PySpark
+# -> Delta path described in data_pipeline/.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  # Prometheus scrapes this endpoint (see observability/prometheus.yml).
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Handy for `docker compose logs otel-collector` while debugging locally.
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus, debug]
+
+  telemetry:
+    logs:
+      level: info
