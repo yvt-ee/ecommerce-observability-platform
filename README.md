@@ -13,9 +13,10 @@ project.
 
 ---
 
+
 ## 1. Architecture
 
-The system has **two deliberately separate pipelines** that both start at
+System has **two deliberately separate pipelines** that both start at
 FastAPI and never cross:
 
 - a **business data pipeline** (order data → PySpark → Delta Lake), and
