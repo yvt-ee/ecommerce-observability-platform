@@ -167,7 +167,7 @@ flowchart LR
 FastAPI is instrumented with:
 - **Automatic** HTTP spans (method, route, status code, exceptions) via
   `opentelemetry-instrumentation-fastapi`.
-- **Custom spans** for the operations that actually matter: `create_order`,
+- **Custom spans** for operations that actually matter: `create_order`,
   `get_products`, `get_orders`, `get_analytics` (not every function — see
   `backend/app/api/*.py`).
 - **Explicit metrics** (`http_server_requests`, `http_server_duration`,
