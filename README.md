@@ -24,7 +24,7 @@ FastAPI and never cross:
 ```mermaid
 flowchart TB
     subgraph Client
-        FE["React<br/>(Vite + TypeScript)"]
+        FE["React Frontend<br/>(Vite + TypeScript)"]
     end
 
     subgraph API["FastAPI Backend"]
